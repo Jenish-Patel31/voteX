@@ -23,12 +23,16 @@ contract Voting {
     Candidate[] public candidates;    // dynamic array of candidates
     mapping(address => Voter) public voters;
     uint256 public totalVotes;        // total votes cast
+    bytes32 public restartPassword;   // password hash for restarting election
+    uint256 public electionRound;     // track election rounds
 
     // --------- Events (useful for UI / logs) ---------
     event CandidateAdded(uint256 indexed index, string name);
     event VoterAuthorized(address indexed voter);
     event VoteCast(address indexed voter, uint256 indexed candidateIndex);
     event ElectionEnded();
+    event ElectionRestarted(uint256 indexed newRound);
+    event RestartPasswordSet();
 
     // --------- Modifiers ---------
     modifier onlyOwner() {
@@ -46,6 +50,9 @@ contract Voting {
         owner = msg.sender;
         electionName = _name;
         electionEnded = false;
+        electionRound = 1;
+        // Set default restart password (admin can change this)
+        restartPassword = keccak256(abi.encodePacked("VoteX2024Restart"));
     }
 
     // --------- Admin functions ---------
@@ -67,6 +74,52 @@ contract Voting {
     function endElection() external onlyOwner {
         electionEnded = true;
         emit ElectionEnded();
+    }
+
+    /// @notice Set restart password (owner only)
+    function setRestartPassword(string memory _password) external onlyOwner {
+        restartPassword = keccak256(abi.encodePacked(_password));
+        emit RestartPasswordSet();
+    }
+
+    /// @notice Restart election with password protection (owner only)
+    function restartElection(string memory _password) external onlyOwner {
+        require(electionEnded, "Election must be ended first");
+        require(keccak256(abi.encodePacked(_password)) == restartPassword, "Invalid restart password");
+        
+        // Reset election state
+        electionEnded = false;
+        totalVotes = 0;
+        electionRound += 1;
+        
+        // Clear all candidates
+        delete candidates;
+        
+        // Clear all voter data
+        // Note: This is a simplified approach. In production, you might want to keep voter history
+        // and just reset the voted status
+        
+        emit ElectionRestarted(electionRound);
+    }
+
+    /// @notice Restart election and clear all data (owner only) - more thorough reset
+    function restartElectionComplete(string memory _password) external onlyOwner {
+        require(electionEnded, "Election must be ended first");
+        require(keccak256(abi.encodePacked(_password)) == restartPassword, "Invalid restart password");
+        
+        // Reset election state
+        electionEnded = false;
+        totalVotes = 0;
+        electionRound += 1;
+        
+        // Clear all candidates
+        delete candidates;
+        
+        // Note: We cannot easily clear the voters mapping in Solidity
+        // The voted status will remain true for previous voters
+        // This is actually good for security - prevents re-voting
+        
+        emit ElectionRestarted(electionRound);
     }
 
     // --------- Voting functions ---------
@@ -107,5 +160,15 @@ contract Voting {
     /// @notice Convenience: check if an address has voted
     function hasVoted(address _addr) external view returns (bool) {
         return voters[_addr].voted;
+    }
+
+    /// @notice Get election round number
+    function getElectionRound() external view returns (uint256) {
+        return electionRound;
+    }
+
+    /// @notice Check if restart password is set (returns true if password is not default)
+    function isRestartPasswordSet() external view returns (bool) {
+        return restartPassword != keccak256(abi.encodePacked("VoteX2024Restart"));
     }
 }

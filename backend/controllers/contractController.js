@@ -110,6 +110,48 @@ async function endElection(req, res) {
   }
 }
 
+/**
+ * POST /restart
+ * body: { password: "restart_password" }
+ */
+async function restartElection(req, res) {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: "Missing 'password' in body" });
+
+    const tx = await contractWithSigner.restartElection(password);
+    const receipt = await tx.wait();
+    return res.json({ success: true, txHash: tx.hash, receipt, message: "Election restarted successfully" });
+  } catch (err) {
+    // Log error for debugging (remove in production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("restartElection error:", err.message);
+    }
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * POST /set-restart-password
+ * body: { password: "new_password" }
+ */
+async function setRestartPassword(req, res) {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: "Missing 'password' in body" });
+
+    const tx = await contractWithSigner.setRestartPassword(password);
+    const receipt = await tx.wait();
+    return res.json({ success: true, txHash: tx.hash, receipt, message: "Restart password updated successfully" });
+  } catch (err) {
+    // Log error for debugging (remove in production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("setRestartPassword error:", err.message);
+    }
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 
 /**
  * GET /status
@@ -123,7 +165,17 @@ async function status(req, res) {
     const name = await contractRead.electionName();
     const ended = await contractRead.electionEnded();
     const totalVotes = (await contractRead.totalVotes()).toString();
-    res.json({ owner, electionName: name, electionEnded: ended, totalVotes });
+    const electionRound = (await contractRead.getElectionRound()).toString();
+    const passwordSet = await contractRead.isRestartPasswordSet();
+    
+    res.json({ 
+      owner, 
+      electionName: name, 
+      electionEnded: ended, 
+      totalVotes,
+      electionRound,
+      restartPasswordSet: passwordSet
+    });
   } catch (err) {
     // Log error for debugging (remove in production)
     if (process.env.NODE_ENV !== 'production') {
@@ -242,6 +294,8 @@ module.exports = {
   addCandidate,
   authorizeVoter,
   endElection,
+  restartElection,
+  setRestartPassword,
   status,
   getResults,
   hasVoted,

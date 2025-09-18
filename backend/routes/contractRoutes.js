@@ -10,6 +10,8 @@ router.get("/candidates", ctrl.getCandidates);
 router.post("/add-candidate", ctrl.addCandidate);
 router.post("/authorize", ctrl.authorizeVoter);
 router.post("/end", ctrl.endElection);
+router.post("/restart", ctrl.restartElection);
+router.post("/set-restart-password", ctrl.setRestartPassword);
 router.post("/vote", ctrl.castVote);
 router.get("/results", ctrl.getResults); 
 router.get("/has-voted/:address", ctrl.hasVoted);
