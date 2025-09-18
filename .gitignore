@@ -114,4 +114,9 @@ temp/
 # yarn.lock
 
 # Local development files
-*.local
+*.local# Temporary documentation files
+*-SETUP*.md
+*-SOLUTION*.md
+*-COMPLETE*.md
+*-FUNCTIONALITY*.md
+start-dev.sh
