@@ -20,17 +20,48 @@ const Results = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Validate that we get proper responses from blockchain
       const [resultsData, statusData] = await Promise.all([
         apiService.getResults(),
         apiService.getStatus()
       ]);
+      
+      // Validate response data structure
+      if (!resultsData || typeof resultsData !== 'object') {
+        throw new Error('Invalid results data received from blockchain');
+      }
+      
+      if (!statusData || typeof statusData !== 'object') {
+        throw new Error('Invalid status data received from blockchain');
+      }
+      
+      // Validate candidates array if it exists
+      if (resultsData.candidates && !Array.isArray(resultsData.candidates)) {
+        throw new Error('Invalid candidates data received from blockchain');
+      }
+      
+      // Only set data if we get valid responses
       setResults(resultsData);
       setStatus(statusData);
-      // Only set loading to false after successful data fetch
+      
+      // Only set loading to false after successful data validation
       setLoading(false);
     } catch (error) {
       console.error('Error fetching results:', error);
-      setError('Failed to connect to blockchain. Please check your network connection and try again.');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to connect to blockchain. Please check your network connection and try again.';
+      
+      if (error.message.includes('timeout')) {
+        errorMessage = 'Blockchain connection timed out. The network may be slow. Please try again.';
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message.includes('Invalid')) {
+        errorMessage = 'Invalid data received from blockchain. Please try again.';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API URL - can be easily changed for deployment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://votex-djrk.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://votex-djrk.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,14 +11,37 @@ const api = axios.create({
   timeout: 30000, // 30 second timeout for blockchain operations
 });
 
-// Helper function to make API calls with blockchain-specific handling
-const makeBlockchainApiCall = async (apiCall, operation = "blockchain operation") => {
-  try {
-    return await apiCall();
-  } catch (error) {
-    console.log(`${operation} failed:`, error.message);
-    throw error;
+// Helper function to make API calls with blockchain-specific handling and retry logic
+const makeBlockchainApiCall = async (apiCall, operation = "blockchain operation", maxRetries = 3) => {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await apiCall();
+      // Only log success on first attempt or after retries
+      if (attempt > 1) {
+        console.log(`${operation} succeeded on attempt ${attempt}`);
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      console.log(`${operation} failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      
+      // Don't retry on certain errors
+      if (error.response?.status === 400 || error.response?.status === 401 || error.response?.status === 403) {
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`Retrying ${operation} in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
+  
+  throw lastError;
 };
 
 // API service functions

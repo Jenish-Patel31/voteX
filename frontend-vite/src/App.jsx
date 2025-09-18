@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
+import ConnectionStatus from './components/ConnectionStatus';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 import Results from './pages/Results';
@@ -11,6 +12,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
+        <ConnectionStatus />
         <Navbar />
         <main className="container mx-auto px-4 py-8">
           <Routes>
